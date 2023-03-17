@@ -25,12 +25,16 @@ def draw_interface():
     sc.fill(BLACK)
     FPS = 60
 
+    bg = pygame.image.load("field_image.jpg")
+    tractor = pygame.image.load("tractor_image.png")
+
     x = BLOCK_SIZE / 4
     y = BLOCK_SIZE / 4
 
     flRunning = True
     while flRunning:
-        sc.fill(BLACK)
+        #sc.fill(BLACK)
+        sc.blit(bg, (0, 0))
         drawGrid()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -45,7 +49,8 @@ def draw_interface():
                     y += BLOCK_SIZE
                 elif event.key == pygame.K_UP:
                     y -= BLOCK_SIZE
-        pygame.draw.rect(sc, BLUE, (x, y, BLOCK_SIZE / 2, BLOCK_SIZE / 2))
+        #pygame.draw.rect(sc, BLUE, (x, y, BLOCK_SIZE / 2, BLOCK_SIZE / 2))
+        sc.blit(tractor, (x-5, y-5))
         pygame.display.update()
 
         clock.tick(FPS)
