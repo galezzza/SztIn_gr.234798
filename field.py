@@ -14,6 +14,7 @@ VEGETABLES = ('Potato', 'Broccoli', 'Carrot', 'Onion')
 
 
 
+
 def generate_locations(number, flag=False, rocks=[]):
     locations = []
     if flag:
@@ -38,11 +39,19 @@ def generate_locations(number, flag=False, rocks=[]):
 
 
 def draw_grid():
-     #Set the size of the grid block
+    #Set the size of the grid block
+    wei = pygame.image.load("images/wet_earth_tile.jpg")
+    dei = pygame.image.load("images/dry_earth_tile.jpg")
     for x in range(0, WINDOW_WIDTH, BLOCK_SIZE):
         for y in range(0, WINDOW_HEIGHT, BLOCK_SIZE):
+            if (x, y) in wet_tiles_coordinates:
+                sc.blit(wei, (x, y))
+            else:
+                sc.blit(dei, (x, y))
             rect = pygame.Rect(x, y, BLOCK_SIZE, BLOCK_SIZE)
             pygame.draw.rect(sc, WHITE, rect, 1)
+
+
 def draw_interface():
     global sc
     sc = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -68,6 +77,8 @@ def draw_interface():
 
     rocks = generate_locations(ROCKS_NUMBER)
     vegetables = generate_locations(VEGETABLES_NUMBER, flag=True, rocks=rocks)
+    global wet_tiles_coordinates
+    wet_tiles_coordinates = []
 
     flRunning = True
     while flRunning:
@@ -91,8 +102,11 @@ def draw_interface():
                 elif event.key == pygame.K_UP:
                     if y > BLOCK_SIZE/2:
                         y -= BLOCK_SIZE
+                elif event.key == pygame.K_SPACE:
+                    wet_tiles_coordinates.append((x-BLOCK_SIZE/4, y-BLOCK_SIZE/4))
+
         #pygame.draw.rect(sc, BLUE, (x, y, BLOCK_SIZE / 2, BLOCK_SIZE / 2))
-        sc.blit(tractor_image, (x-5, y-5))
+
         for rock in rocks:
             sc.blit(rock_image, (rock[0], rock[1]))
         for vegetable in vegetables:
@@ -104,7 +118,7 @@ def draw_interface():
                 sc.blit(broccoli_image, (vegetable[0], vegetable[1]))
             elif vegetable[2] == 'Onion':
                 sc.blit(onion_image, (vegetable[0], vegetable[1]))
-
+        sc.blit(tractor_image, (x - 5, y - 5))
         pygame.display.update()
 
         clock.tick(FPS)
