@@ -7,12 +7,15 @@ pygame.init()
 BLACK = (0, 0, 0)
 WHITE = (200, 200, 200)
 BLUE = (46, 34, 240)
-WINDOW_DIMENSIONS = 800
-BLOCK_SIZE = 80
-ROCKS_NUMBER = 10
+WINDOW_DIMENSIONS = 900
+BLOCK_SIZE = 60
+ROCKS_NUMBER = 15
 VEGETABLES_NUMBER = 20
 VEGETABLES = ('Potato', 'Broccoli', 'Carrot', 'Onion')
 BOARD_SIZE = int(WINDOW_DIMENSIONS / BLOCK_SIZE)
+WATER_TANK_CAPACITY = 10
+GAS_TANK_CAPACITY = 100
+SPAWN_POINT = (0, 0)
 
 
 def generate_locations(number, flag=False, rocks=[]):
@@ -70,14 +73,16 @@ def draw_interface():
     carrot_image = pygame.transform.scale(pygame.image.load("images/carrot.png"), (BLOCK_SIZE, BLOCK_SIZE))
     broccoli_image = pygame.transform.scale(pygame.image.load("images/broccoli.png"), (BLOCK_SIZE, BLOCK_SIZE))
     onion_image = pygame.transform.scale(pygame.image.load("images/onion.png"), (BLOCK_SIZE, BLOCK_SIZE))
+    gas_station_image = pygame.transform.scale(pygame.image.load("images/gas_station.png"), (BLOCK_SIZE, BLOCK_SIZE))
     font = pygame.font.Font('freesansbold.ttf', BLOCK_SIZE // 2)
     # endregion
 
-    x = 0
-    y = 0
+    (x, y) = SPAWN_POINT
 
     rocks = generate_locations(ROCKS_NUMBER)
     vegetables = generate_locations(VEGETABLES_NUMBER, flag=True, rocks=rocks)
+    water_left = WATER_TANK_CAPACITY
+    gas_left = GAS_TANK_CAPACITY
     collected_vegetables = [0, 0, 0, 0]
     global wet_tiles_coordinates
     wet_tiles_coordinates = []
@@ -85,6 +90,8 @@ def draw_interface():
     fl_running = True
     while fl_running:
         draw_grid()
+
+        #region events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -92,33 +99,42 @@ def draw_interface():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     if x > 0:
+                        x -= 1
                         if (x - 1, y) not in rocks:
-                            x -= 1
+                            gas_left -= 1
                         else:
-                            print("Rock")
+                            print('Rock')
+                            gas_left -= 5
                 elif event.key == pygame.K_RIGHT:
                     if x < BOARD_SIZE - 1:
+                        x += 1
                         if (x + 1, y) not in rocks:
-                            x += 1
+                            gas_left -= 1
                         else:
+                            gas_left -= 5
                             print("Rock")
                 elif event.key == pygame.K_DOWN:
                     if y < BOARD_SIZE - 1:
+                        y += 1
                         if (x, y + 1) not in rocks:
-                            y += 1
+                            gas_left -= 1
                         else:
+                            gas_left -= 5
                             print("Rock")
                 elif event.key == pygame.K_UP:
                     if y > 0:
+                        y -= 1
                         if (x, y - 1) not in rocks:
-                            y -= 1
+                            gas_left -= 1
                         else:
+                            gas_left -= 5
                             print("Rock")
                 elif event.key == pygame.K_SPACE:
                     wet_tiles_coordinates.append((x, y))
                 elif event.key == pygame.K_RETURN:
                     for vegetable in vegetables:
                         if vegetable[0] == x and vegetable[1] == y:
+                            water_left -= 1
                             if vegetable[2] == 'Potato':
                                 print("Potato collected")
                                 collected_vegetables[0] += 1
@@ -135,6 +151,11 @@ def draw_interface():
                             break
                         else:
                             print("No vegetable here")
+                    if (x, y) == SPAWN_POINT:
+                        water_left = WATER_TANK_CAPACITY
+                        gas_left = GAS_TANK_CAPACITY
+
+        #endregion
 
         for rock in rocks:
             sc.blit(rock_image, (rock[0] * BLOCK_SIZE, rock[1] * BLOCK_SIZE))
@@ -147,12 +168,27 @@ def draw_interface():
                 sc.blit(broccoli_image, (vegetable[0] * BLOCK_SIZE + 5, vegetable[1] * BLOCK_SIZE + 5))
             elif vegetable[2] == 'Onion':
                 sc.blit(onion_image, (vegetable[0] * BLOCK_SIZE + 5, vegetable[1] * BLOCK_SIZE + 5))
+        sc.blit(gas_station_image, (SPAWN_POINT[0] * BLOCK_SIZE, SPAWN_POINT[1] * BLOCK_SIZE))
+
+        # region text
         vegetables_text = font.render('Potato: ' + str(collected_vegetables[0]) + ' Broccoli: ' + str(
             collected_vegetables[1]) + ' Carrot: ' + str(collected_vegetables[2]) + ' Onion: ' + str(
             collected_vegetables[3]), True, WHITE, BLACK)
         vegetables_textRect = vegetables_text.get_rect()
         vegetables_textRect.center = (WINDOW_DIMENSIONS // 2, WINDOW_DIMENSIONS - 30)
         sc.blit(vegetables_text, vegetables_textRect)
+
+        water_text = font.render('Waterd tank: ' + str(water_left), True, WHITE, BLACK)
+        water_textRect = water_text.get_rect()
+        water_textRect.center = (WINDOW_DIMENSIONS // 4, 20)
+        sc.blit(water_text, water_textRect)
+
+        gas_text = font.render('Gas tank: ' + str(gas_left), True, WHITE, BLACK)
+        gas_textRect = gas_text.get_rect()
+        gas_textRect.center = (WINDOW_DIMENSIONS // 4 * 3, 20)
+        sc.blit(gas_text, gas_textRect)
+        # endregion
+
         sc.blit(tractor_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
         pygame.display.update()
 
