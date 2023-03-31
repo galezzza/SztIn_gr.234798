@@ -130,11 +130,12 @@ def draw_interface():
                             gas_left -= 5
                             print("Rock")
                 elif event.key == pygame.K_SPACE:
-                    wet_tiles_coordinates.append((x, y))
+                    if water_left >= 1:
+                        water_left -= 1
+                        wet_tiles_coordinates.append((x, y))
                 elif event.key == pygame.K_RETURN:
                     for vegetable in vegetables:
                         if vegetable[0] == x and vegetable[1] == y:
-                            water_left -= 1
                             if vegetable[2] == 'Potato':
                                 print("Potato collected")
                                 collected_vegetables[0] += 1
@@ -149,8 +150,6 @@ def draw_interface():
                                 collected_vegetables[3] += 1
                             vegetables.remove(vegetable)
                             break
-                        else:
-                            print("No vegetable here")
                     if (x, y) == SPAWN_POINT:
                         water_left = WATER_TANK_CAPACITY
                         gas_left = GAS_TANK_CAPACITY
