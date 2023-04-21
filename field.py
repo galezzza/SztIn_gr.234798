@@ -1,4 +1,5 @@
 import random
+import time
 from heapq import *
 from enum import Enum, IntEnum
 from collections import deque
@@ -65,11 +66,16 @@ def draw_interface():
     tractor = Tractor(x, y, Direction.RIGHT)
 
     grid = Grid(BOARD_SIZE, BOARD_SIZE, BLOCK_SIZE)
-    graph = Graph(grid)
+    graph1 = Graph(grid)
+    graph1.initialize_graph(grid)
+
+    startpoint = (0, 0)
+    endpoint = startpoint
+
+
     fl_running = True
     while fl_running:
         draw_grid()
-
         # region events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -92,6 +98,16 @@ def draw_interface():
                     if (tractor.x, tractor.y) == SPAWN_POINT:
                         tractor.water = WATER_TANK_CAPACITY
                         tractor.gas = GAS_TANK_CAPACITY
+                elif event.type == pygame.MOUSEWHEEL:
+                    print(1)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                endpoint = get_click_mouse_pos()
+                print(endpoint)
+                a = graph1.dijkstra(startpoint, endpoint)
+                b = getRoad(startpoint, endpoint, a)
+                print(b)
+                startpoint = endpoint
+                movement(tractor, grid, b)
 
         # endregion
 
@@ -218,16 +234,19 @@ class Graph:
         while queue:
             cur_cost, cur_node = heappop(queue)
             if cur_node == goal:
+                queue = []
                 break
 
             next_nodes = self.graph[cur_node]
             for next_node in next_nodes:
                 neigh_cost, neigh_node = next_node
                 new_cost = cost_visited[cur_node] + neigh_cost
+
                 if neigh_node not in cost_visited or new_cost < cost_visited[neigh_node]:
                     heappush(queue, (new_cost, neigh_node))
                     cost_visited[neigh_node] = new_cost
                     visited[neigh_node] = cur_node
+        # print(visited)
         return visited
 
 class Tractor:
@@ -265,3 +284,61 @@ class Tractor:
         else:
             self.gas -= 1
         return
+
+
+def movement(traktor:Tractor, grid:Grid, road):
+    n = len(road)
+    for i in range(n-1):
+        if road[i][0]!=road[i+1][0]:
+            if road[i][0]>road[i+1][0]:
+                if traktor.direction!=3:
+                    while traktor.direction!=3:
+                        traktor.rot_center(Direction.LEFT)
+                traktor.move(grid=grid)
+                print("move left")
+            elif road[i][0]<road[i+1][0]:
+                if traktor.direction!=1:
+                    while traktor.direction!=1:
+                        traktor.rot_center(Direction.LEFT)
+                traktor.move(grid=grid)
+                print("move right")
+        else:
+            if road[i][1] > road[i + 1][1]:
+                if traktor.direction!=0:
+                    while traktor.direction!=0:
+                        traktor.rot_center(Direction.LEFT)
+                traktor.move(grid=grid)
+                print("move up")
+            elif road[i][1] < road[i + 1][1]:
+                if traktor.direction!=2:
+                    while traktor.direction!=2:
+                        traktor.rot_center(Direction.LEFT)
+                traktor.move(grid=grid)
+                print("move down")
+
+def getRoad(start, goal, visited):
+    arr = []
+    aFrom = goal
+    while aFrom != start:
+        arr.append(aFrom)
+        aFrom = visited[aFrom]
+    arr.append(start)
+    brr=arr[::-1]
+    return brr
+
+# grid = Grid(BOARD_SIZE, BOARD_SIZE, BLOCK_SIZE)
+# graph1 = Graph(grid)
+# graph1.initialize_graph(grid)
+#
+# startpoint = (1, 1)
+# endpoint = (2,2)
+#
+# a = graph1.dijkstra(startpoint, endpoint)
+# b = getRoad(startpoint, endpoint, a)
+# print(b)
+
+
+
+
+
+
