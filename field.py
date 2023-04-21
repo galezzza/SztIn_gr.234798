@@ -192,7 +192,7 @@ class Grid:
                 i -= 1
 
     def get_next_nodes(self, x, y):
-        check_next_node = lambda x, y: 1 if 0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE and (self.grid[x][y] != types.ROCK) else 5
+        check_next_node = lambda x, y: True if 0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE and (self.grid[x][y] != types.ROCK) else False
         ways = [-1, 0], [1, 0], [0, -1], [0, 1]
         return [(1 if self.grid[x][y] != types.ROCK else 5, (x + dx, y + dy)) for dx, dy in ways if check_next_node(x + dx, y + dy)]
 
