@@ -1,5 +1,7 @@
 import random
-from enum import Enum
+from heapq import *
+from enum import Enum, IntEnum
+from collections import deque
 
 import pygame
 
@@ -18,41 +20,23 @@ GAS_TANK_CAPACITY = 100
 SPAWN_POINT = (0, 0)
 
 
-def generate_locations(number, flag=False, rocks=[]):
-    locations = []
-    if flag:
-        for i in range(number):
-            x = random.randrange(0, BOARD_SIZE)
-            y = random.randrange(0, BOARD_SIZE)
-            if (x, y) not in rocks and (x, y, 'Potato') not in locations and (x, y, 'Broccoli') not in locations and (
-            x, y, 'Carrot') not in locations and (x, y, 'Onion') not in locations:
-                locations.append((x, y, VEGETABLES[random.randrange(0, len(VEGETABLES))]))
-            else:
-                i -= 1
-        return locations
-    else:
-        for i in range(number):
-            x = random.randrange(0, BOARD_SIZE - 1)
-            y = random.randrange(0, BOARD_SIZE - 1)
-            if (x, y) not in locations and (x, y) != (0, 0):
-                locations.append((x, y))
-            else:
-                i -= 1
-        return locations
-
-
 def draw_grid():
     # Set the size of the grid block
     wei = pygame.transform.scale(pygame.image.load("images/wet_earth_tile.jpg"), (BLOCK_SIZE, BLOCK_SIZE))
     dei = pygame.transform.scale(pygame.image.load("images/dry_earth_tile.jpg"), (BLOCK_SIZE, BLOCK_SIZE))
     for x in range(0, BOARD_SIZE):
         for y in range(0, BOARD_SIZE):
-            if (x, y) in wet_tiles_coordinates:
-                sc.blit(wei, (x * BLOCK_SIZE, y * BLOCK_SIZE))
-            else:
-                sc.blit(dei, (x * BLOCK_SIZE, y * BLOCK_SIZE))
+            sc.blit(wei, (x * BLOCK_SIZE, y * BLOCK_SIZE))
             rect = pygame.Rect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
             pygame.draw.rect(sc, WHITE, rect, 1)
+
+
+def get_click_mouse_pos():
+    x, y = pygame.mouse.get_pos()
+    grid_x, grid_y = x // BLOCK_SIZE, y // BLOCK_SIZE
+    pygame.draw.rect(sc, BLUE, (grid_x * BLOCK_SIZE, grid_y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE), 1)
+    click = pygame.mouse.get_pressed()
+    return (grid_x, grid_y) if click[0] else False
 
 
 def draw_interface():
@@ -67,7 +51,7 @@ def draw_interface():
 
     # region Images import
     # bg = pygame.image.load("images/field_image.jpg")
-    tractor_image= pygame.transform.scale(pygame.image.load("images/tractor_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
+    tractor_image = pygame.transform.scale(pygame.image.load("images/tractor_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
     rock_image = pygame.transform.scale(pygame.image.load("images/rock_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
     potato_image = pygame.transform.scale(pygame.image.load("images/potato.png"), (BLOCK_SIZE, BLOCK_SIZE))
     carrot_image = pygame.transform.scale(pygame.image.load("images/carrot.png"), (BLOCK_SIZE, BLOCK_SIZE))
@@ -78,137 +62,96 @@ def draw_interface():
     # endregion
 
     (x, y) = SPAWN_POINT
+    tractor = Tractor(x, y, Direction.RIGHT)
 
-    rocks = generate_locations(ROCKS_NUMBER)
-    vegetables = generate_locations(VEGETABLES_NUMBER, flag=True, rocks=rocks)
-    water_left = WATER_TANK_CAPACITY
-    gas_left = GAS_TANK_CAPACITY
-    collected_vegetables = [0, 0, 0, 0]
-    global wet_tiles_coordinates
-    wet_tiles_coordinates = []
+    grid = Grid(BOARD_SIZE, BOARD_SIZE, BLOCK_SIZE)
 
     fl_running = True
     while fl_running:
         draw_grid()
 
-        #region events
+        # region events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 fl_running = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    if x > 0:
-                        x -= 1
-                        if (x - 1, y) not in rocks:
-                            gas_left -= 1
-                        else:
-                            print('Rock')
-                            gas_left -= 5
+                    tractor.rot_center(Direction.LEFT)
                 elif event.key == pygame.K_RIGHT:
-                    if x < BOARD_SIZE - 1:
-                        x += 1
-                        if (x + 1, y) not in rocks:
-                            gas_left -= 1
-                        else:
-                            gas_left -= 5
-                            print("Rock")
-                elif event.key == pygame.K_DOWN:
-                    if y < BOARD_SIZE - 1:
-                        y += 1
-                        if (x, y + 1) not in rocks:
-                            gas_left -= 1
-                        else:
-                            gas_left -= 5
-                            print("Rock")
+                    tractor.rot_center(Direction.RIGHT)
                 elif event.key == pygame.K_UP:
-                    if y > 0:
-                        y -= 1
-                        if (x, y - 1) not in rocks:
-                            gas_left -= 1
-                        else:
-                            gas_left -= 5
-                            print("Rock")
-                elif event.key == pygame.K_SPACE:
-                    if water_left >= 1:
-                        water_left -= 1
-                        wet_tiles_coordinates.append((x, y))
+                    tractor.move(grid=grid)
                 elif event.key == pygame.K_RETURN:
-                    for vegetable in vegetables:
-                        if vegetable[0] == x and vegetable[1] == y:
-                            if vegetable[2] == 'Potato':
-                                print("Potato collected")
-                                collected_vegetables[0] += 1
-                            elif vegetable[2] == 'Broccoli':
-                                print("Broccoli collected")
-                                collected_vegetables[1] += 1
-                            elif vegetable[2] == 'Carrot':
-                                print("Carrot collected")
-                                collected_vegetables[2] += 1
-                            elif vegetable[2] == 'Onion':
-                                print("Onion collected")
-                                collected_vegetables[3] += 1
-                            vegetables.remove(vegetable)
-                            break
-                    if (x, y) == SPAWN_POINT:
-                        water_left = WATER_TANK_CAPACITY
-                        gas_left = GAS_TANK_CAPACITY
+                    for y, row in enumerate(grid.grid):
+                        for x, col in enumerate(row):
+                            if col in [item.value for item in vegetables] and (x, y) == (tractor.x, tractor.y):
+                                tractor.collected_vegetables[vegetables(col)] += 1
+                                grid.remove_object(x, y)
+                                break
+                    if (tractor.x, tractor.y) == SPAWN_POINT:
+                        tractor.water = WATER_TANK_CAPACITY
+                        tractor.gas = GAS_TANK_CAPACITY
 
-        #endregion
+        # endregion
 
-        for rock in rocks:
-            sc.blit(rock_image, (rock[0] * BLOCK_SIZE, rock[1] * BLOCK_SIZE))
-        for vegetable in vegetables:
-            if vegetable[2] == 'Potato':
-                sc.blit(potato_image, (vegetable[0] * BLOCK_SIZE + 5, vegetable[1] * BLOCK_SIZE + 5))
-            elif vegetable[2] == 'Carrot':
-                sc.blit(carrot_image, (vegetable[0] * BLOCK_SIZE + 5, vegetable[1] * BLOCK_SIZE + 5))
-            elif vegetable[2] == 'Broccoli':
-                sc.blit(broccoli_image, (vegetable[0] * BLOCK_SIZE + 5, vegetable[1] * BLOCK_SIZE + 5))
-            elif vegetable[2] == 'Onion':
-                sc.blit(onion_image, (vegetable[0] * BLOCK_SIZE + 5, vegetable[1] * BLOCK_SIZE + 5))
+        for y, row in enumerate(grid.grid):
+            for x, col in enumerate(row):
+                if grid.grid[x][y] == vegetables.POTATO:
+                    sc.blit(potato_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
+                elif grid.grid[x][y] == vegetables.CARROT:
+                    sc.blit(carrot_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
+                elif grid.grid[x][y] == vegetables.BROCCOLI:
+                    sc.blit(broccoli_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
+                elif grid.grid[x][y] == vegetables.ONION:
+                    sc.blit(onion_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
+                elif grid.grid[x][y] == types.ROCK:
+                    sc.blit(rock_image, (x * BLOCK_SIZE, y * BLOCK_SIZE))
         sc.blit(gas_station_image, (SPAWN_POINT[0] * BLOCK_SIZE, SPAWN_POINT[1] * BLOCK_SIZE))
 
         # region text
-        vegetables_text = font.render('Potato: ' + str(collected_vegetables[0]) + ' Broccoli: ' + str(
-            collected_vegetables[1]) + ' Carrot: ' + str(collected_vegetables[2]) + ' Onion: ' + str(
-            collected_vegetables[3]), True, WHITE, BLACK)
-        vegetables_textRect = vegetables_text.get_rect()
-        vegetables_textRect.center = (WINDOW_DIMENSIONS // 2, WINDOW_DIMENSIONS - 30)
-        sc.blit(vegetables_text, vegetables_textRect)
+        vegetables_text = font.render(
+            'Potato: ' + str(tractor.collected_vegetables[vegetables.POTATO]) + ' Broccoli: ' + str(
+                tractor.collected_vegetables[vegetables.BROCCOLI]) + ' Carrot: ' + str(
+                tractor.collected_vegetables[vegetables.CARROT]) + ' Onion: ' + str(
+                tractor.collected_vegetables[vegetables.ONION]), True, WHITE, BLACK)
+        vegetables_textrect = vegetables_text.get_rect()
+        vegetables_textrect.center = (WINDOW_DIMENSIONS // 2, WINDOW_DIMENSIONS - 30)
+        sc.blit(vegetables_text, vegetables_textrect)
 
-        water_text = font.render('Waterd tank: ' + str(water_left), True, WHITE, BLACK)
-        water_textRect = water_text.get_rect()
-        water_textRect.center = (WINDOW_DIMENSIONS // 4, 20)
-        sc.blit(water_text, water_textRect)
-
-        gas_text = font.render('Gas tank: ' + str(gas_left), True, WHITE, BLACK)
-        gas_textRect = gas_text.get_rect()
-        gas_textRect.center = (WINDOW_DIMENSIONS // 4 * 3, 20)
-        sc.blit(gas_text, gas_textRect)
+        gas_text = font.render('Gas tank: ' + str(tractor.gas), True, WHITE, BLACK)
+        gas_textrect = gas_text.get_rect()
+        gas_textrect.center = (WINDOW_DIMENSIONS // 4 * 3, 20)
+        sc.blit(gas_text, gas_textrect)
         # endregion
 
-        sc.blit(tractor_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
+        sc.blit(tractor.image, (tractor.x * BLOCK_SIZE + 5, tractor.y * BLOCK_SIZE + 5))
         pygame.display.update()
 
         clock.tick(FPS)
 
 
-class types(Enum):
-    EMPTY = 0
-    ROCK = 1
-    TRACTOR = 2
+class Direction(IntEnum):
+    UP = 0
+    RIGHT = 1
+    DOWN = 2
+    LEFT = 3
+
+
+class vegetables(Enum):
     POTATO = 3
     BROCCOLI = 4
     CARROT = 5
     ONION = 6
 
 
-class objectOnField:
-    def __init__(self, x, y, type):
-        self.x = x
-        self.y = y
-        self.type = type
+class types(Enum):
+    EMPTY = 0
+    ROCK = 1
+    POTATO = 3
+    BROCCOLI = 4
+    CARROT = 5
+    ONION = 6
 
 
 class Grid:
@@ -216,9 +159,110 @@ class Grid:
         self.width = width
         self.height = height
         self.block_size = block_size
-        self.grid = []
-        self.vegetables = []
-        self.rocks = []
-        self.tractor = None
-        self.wet_tiles = []
-        self.generate_grid()
+        self.grid = [[types.EMPTY for col in range(BOARD_SIZE)] for row in range(BOARD_SIZE)]
+        self.graph = {}
+        self.initialize_grid()
+
+    def add_object(self, x, y, type_of_object: types):
+        if self.grid[x][y] == types.EMPTY:
+            self.grid[x][y] = type_of_object
+            return True
+        else:
+            return False
+
+    def remove_object(self, x, y):
+        if self.grid[x][y] != types.EMPTY:
+            self.grid[x][y] = types.EMPTY
+            return True
+        else:
+            return False
+
+    def initialize_grid(self):
+        for i in range(VEGETABLES_NUMBER):
+            x, y = random.randrange(0, BOARD_SIZE), random.randrange(0, BOARD_SIZE)
+            if self.grid[x][y] == types.EMPTY and (x, y) != (0, 0):
+                self.add_object(x, y, random.choice(list(vegetables)))
+            else:
+                i -= 1
+        for i in range(ROCKS_NUMBER):
+            x, y = random.randrange(0, BOARD_SIZE - 1), random.randrange(0, BOARD_SIZE - 1)
+            if self.grid[x][y] == types.EMPTY and (x, y) != (0, 0):
+                self.add_object(x, y, types.ROCK)
+            else:
+                i -= 1
+
+    def get_next_nodes(self, x, y):
+        check_next_node = lambda x, y: True if 0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE and (
+                    self.grid[x][y] != types.ROCK) else False
+        ways = [-1, 0], [1, 0], [0, -1], [0, 1]
+        return [(x + dx, y + dy) for dx, dy in ways if check_next_node(x + dx, y + dy)]
+
+
+class Graph:
+    def __init__(self, grid: Grid):
+        self.graph = {}
+        self.initialize_graph(grid)
+
+    def initialize_graph(self, grid: Grid):
+        for y, row in enumerate(grid.grid):
+            for x, col in enumerate(row):
+                if col != types.ROCK:
+                    self.graph[(x, y)] = self.graph.get((x, y), []) + grid.get_next_nodes(x, y)
+
+    def dijkstra(self, start, goal):
+        #not finished yet https://www.youtube.com/watch?v=abHftC1GU6w
+        queue = []
+        heappush(queue, (0, start))
+        cost_visited = {start: 0}
+        visited = {start: None}
+
+        while queue:
+            cur_cost, cur_node = heappop(queue)
+            if cur_node == goal:
+                break
+
+            next_nodes = self.graph[cur_node]
+            for next_node in next_nodes:
+                neigh_cost, neigh_node = next_node
+                new_cost = cost_visited[cur_node] + neigh_cost
+                if neigh_node not in cost_visited or new_cost < cost_visited[neigh_node]:
+                    heappush(queue, (new_cost, neigh_node))
+                    cost_visited[neigh_node] = new_cost
+                    visited[neigh_node] = cur_node
+        return visited
+
+class Tractor:
+    def __init__(self, x, y, direction: Direction):
+        self.x = x
+        self.y = y
+        self.direction = direction
+        self.gas = GAS_TANK_CAPACITY
+        self.water = WATER_TANK_CAPACITY
+        self.collected_vegetables = {vegetables.POTATO: 0, vegetables.BROCCOLI: 0, vegetables.CARROT: 0,
+                                     vegetables.ONION: 0}
+        self.image = pygame.transform.scale(pygame.image.load("images/tractor_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
+
+    def rot_center(self, direc: Direction):
+        self.image = pygame.transform.rotate(self.image, - int(direc) * 90)
+        self.direction = ((int(self.direction) + int(direc)) % 4)
+        return
+
+    def move(self, grid: Grid):
+        if self.direction == Direction.UP:
+            if self.y > 0:
+                self.y -= 1
+        elif self.direction == Direction.RIGHT:
+            if self.x < BOARD_SIZE - 1:
+                self.x += 1
+        elif self.direction == Direction.DOWN:
+            if self.y < BOARD_SIZE - 1:
+                self.y += 1
+        elif self.direction == Direction.LEFT:
+            if self.x > 0:
+                self.x -= 1
+
+        if grid.grid[self.x][self.y] == types.ROCK:
+            self.gas -= 5
+        else:
+            self.gas -= 1
+        return
