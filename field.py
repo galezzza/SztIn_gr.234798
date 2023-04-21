@@ -65,7 +65,7 @@ def draw_interface():
     tractor = Tractor(x, y, Direction.RIGHT)
 
     grid = Grid(BOARD_SIZE, BOARD_SIZE, BLOCK_SIZE)
-
+    graph = Graph(grid)
     fl_running = True
     while fl_running:
         draw_grid()
@@ -192,10 +192,9 @@ class Grid:
                 i -= 1
 
     def get_next_nodes(self, x, y):
-        check_next_node = lambda x, y: True if 0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE and (
-                    self.grid[x][y] != types.ROCK) else False
+        check_next_node = lambda x, y: 1 if 0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE and (self.grid[x][y] != types.ROCK) else 5
         ways = [-1, 0], [1, 0], [0, -1], [0, 1]
-        return [(x + dx, y + dy) for dx, dy in ways if check_next_node(x + dx, y + dy)]
+        return [(1 if self.grid[x][y] != types.ROCK else 5, (x + dx, y + dy)) for dx, dy in ways if check_next_node(x + dx, y + dy)]
 
 
 class Graph:
