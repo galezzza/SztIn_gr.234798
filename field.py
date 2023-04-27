@@ -37,7 +37,7 @@ def get_click_mouse_pos():
     grid_x, grid_y = x // BLOCK_SIZE, y // BLOCK_SIZE
     pygame.draw.rect(sc, BLUE, (grid_x * BLOCK_SIZE, grid_y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE), 1)
     click = pygame.mouse.get_pressed()
-    return (grid_x, grid_y) if click[0] else False
+    return (grid_x, grid_y, Direction.RIGHT) if click[0] else False
 
 
 def draw_interface():
@@ -98,7 +98,7 @@ def draw_interface():
                         tractor.water = WATER_TANK_CAPACITY
                         tractor.gas = GAS_TANK_CAPACITY
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                startpoint = (tractor.x, tractor.y)
+                startpoint = (tractor.x, tractor.y, tractor.direction)
                 endpoint = get_click_mouse_pos()
                 print(endpoint)
                 a = graph1.dijkstra(startpoint, endpoint)
@@ -174,7 +174,6 @@ class Grid:
         self.height = height
         self.block_size = block_size
         self.grid = [[types.EMPTY for col in range(BOARD_SIZE)] for row in range(BOARD_SIZE)]
-        self.graph = {}
         self.initialize_grid()
 
     def add_object(self, x, y, type_of_object: types):
@@ -205,13 +204,6 @@ class Grid:
             else:
                 i -= 1
 
-    def get_next_nodes(self, x, y):
-        check_next_node = lambda x, y: True if 0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE and (
-                    self.grid[x][y] != types.ROCK) else False
-        ways = [-1, 0], [1, 0], [0, -1], [0, 1]
-        return [(1 if self.grid[x][y] != types.ROCK else 5, (x + dx, y + dy)) for dx, dy in ways if
-                check_next_node(x + dx, y + dy)]
-
 
 class Graph:
     def __init__(self, grid: Grid):
@@ -221,7 +213,8 @@ class Graph:
     def initialize_graph(self, grid: Grid):
         for y, row in enumerate(grid.grid):
             for x, col in enumerate(row):
-                self.graph[(x, y)] = self.graph.get((x, y), []) + grid.get_next_nodes(x, y)
+                for direction in Direction:
+                    self.graph[(x, y, direction)] = get_next_nodes(x, y, direction, grid)
 
 
     def dijkstra(self, start, goal):
@@ -287,10 +280,21 @@ class Tractor:
         return
 
 
+def get_next_nodes(x, y, direction: Direction, grid: Grid):
+    check_next_node = lambda x, y: True if 0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE else False
+    way = [0, -1] if direction == Direction.UP else [1, 0] if direction == Direction.RIGHT else [0, 1] if direction == Direction.DOWN else [-1, 0]
+    next_nodes = []
+    for new_direction in Direction:
+        if new_direction != direction:
+            next_nodes.append((1, (x, y, new_direction)))
+        else:
+            if check_next_node(x + way[0], y + way[1]):
+                next_nodes.append((grid.grid[x + way[0]][y + way[1]].value, (x + way[0], y + way[1], new_direction)))
+    return next_nodes
+
 def movement(traktor: Tractor, grid: Grid, road):
     n = len(road)
     for i in range(n - 1):
-        time.sleep(0.3)
         if road[i][0] != road[i + 1][0]:
             if road[i][0] > road[i + 1][0]:
                 if traktor.direction != 3:
