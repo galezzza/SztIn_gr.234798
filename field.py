@@ -20,6 +20,15 @@ WATER_TANK_CAPACITY = 10
 GAS_TANK_CAPACITY = 100
 SPAWN_POINT = (0, 0)
 
+tractor_image = pygame.transform.scale(pygame.image.load("images/tractor_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
+rock_image = pygame.transform.scale(pygame.image.load("images/rock_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
+potato_image = pygame.transform.scale(pygame.image.load("images/potato.png"), (BLOCK_SIZE, BLOCK_SIZE))
+carrot_image = pygame.transform.scale(pygame.image.load("images/carrot.png"), (BLOCK_SIZE, BLOCK_SIZE))
+broccoli_image = pygame.transform.scale(pygame.image.load("images/broccoli.png"), (BLOCK_SIZE, BLOCK_SIZE))
+onion_image = pygame.transform.scale(pygame.image.load("images/onion.png"), (BLOCK_SIZE, BLOCK_SIZE))
+gas_station_image = pygame.transform.scale(pygame.image.load("images/gas_station.png"), (BLOCK_SIZE, BLOCK_SIZE))
+font = pygame.font.Font('freesansbold.ttf', BLOCK_SIZE // 2)
+
 
 def draw_grid():
     # Set the size of the grid block
@@ -46,21 +55,7 @@ def draw_interface():
     pygame.display.set_caption("Pole i ciągnik")
     pygame.display.set_icon(pygame.image.load("images/icon.png"))
 
-    clock = pygame.time.Clock()
     sc.fill(BLACK)
-    FPS = 60
-
-    # region Images import
-    # bg = pygame.image.load("images/field_image.jpg")
-    tractor_image = pygame.transform.scale(pygame.image.load("images/tractor_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
-    rock_image = pygame.transform.scale(pygame.image.load("images/rock_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
-    potato_image = pygame.transform.scale(pygame.image.load("images/potato.png"), (BLOCK_SIZE, BLOCK_SIZE))
-    carrot_image = pygame.transform.scale(pygame.image.load("images/carrot.png"), (BLOCK_SIZE, BLOCK_SIZE))
-    broccoli_image = pygame.transform.scale(pygame.image.load("images/broccoli.png"), (BLOCK_SIZE, BLOCK_SIZE))
-    onion_image = pygame.transform.scale(pygame.image.load("images/onion.png"), (BLOCK_SIZE, BLOCK_SIZE))
-    gas_station_image = pygame.transform.scale(pygame.image.load("images/gas_station.png"), (BLOCK_SIZE, BLOCK_SIZE))
-    font = pygame.font.Font('freesansbold.ttf', BLOCK_SIZE // 2)
-    # endregion
 
     (x, y) = SPAWN_POINT
     tractor = Tractor(x, y, Direction.RIGHT)
@@ -97,46 +92,10 @@ def draw_interface():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 startpoint = (tractor.x, tractor.y, tractor.direction)
                 endpoint = get_click_mouse_pos()
-                a = graph1.dijkstra(startpoint, endpoint)
-                b = getRoad(startpoint, endpoint, a)
+                a, c = graph1.dijkstra(startpoint, endpoint)
+                b = getRoad(startpoint, c, a)
                 movement(tractor, grid, b)
-
-        # endregion
-
-        for y, row in enumerate(grid.grid):
-            for x, col in enumerate(row):
-                if grid.grid[x][y] == vegetables.POTATO:
-                    sc.blit(potato_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
-                elif grid.grid[x][y] == vegetables.CARROT:
-                    sc.blit(carrot_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
-                elif grid.grid[x][y] == vegetables.BROCCOLI:
-                    sc.blit(broccoli_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
-                elif grid.grid[x][y] == vegetables.ONION:
-                    sc.blit(onion_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
-                elif grid.grid[x][y] == types.ROCK:
-                    sc.blit(rock_image, (x * BLOCK_SIZE, y * BLOCK_SIZE))
-        sc.blit(gas_station_image, (SPAWN_POINT[0] * BLOCK_SIZE, SPAWN_POINT[1] * BLOCK_SIZE))
-
-        # region text
-        vegetables_text = font.render(
-            'Potato: ' + str(tractor.collected_vegetables[vegetables.POTATO]) + ' Broccoli: ' + str(
-                tractor.collected_vegetables[vegetables.BROCCOLI]) + ' Carrot: ' + str(
-                tractor.collected_vegetables[vegetables.CARROT]) + ' Onion: ' + str(
-                tractor.collected_vegetables[vegetables.ONION]), True, WHITE, BLACK)
-        vegetables_textrect = vegetables_text.get_rect()
-        vegetables_textrect.center = (WINDOW_DIMENSIONS // 2, WINDOW_DIMENSIONS - 30)
-        sc.blit(vegetables_text, vegetables_textrect)
-
-        gas_text = font.render('Gas tank: ' + str(tractor.gas), True, WHITE, BLACK)
-        gas_textrect = gas_text.get_rect()
-        gas_textrect.center = (WINDOW_DIMENSIONS // 4 * 3, 20)
-        sc.blit(gas_text, gas_textrect)
-        # endregion
-
-        sc.blit(tractor.image, (tractor.x * BLOCK_SIZE + 5, tractor.y * BLOCK_SIZE + 5))
-        pygame.display.update()
-
-        clock.tick(FPS)
+        updateDisplay(tractor, grid)
 
 
 class Direction(IntEnum):
@@ -217,10 +176,13 @@ class Graph:
         cost_visited = {start: 0}
         visited = {start: None}
 
+        returnGoal = goal
+
         while queue:
             cur_cost, cur_node = heappop(queue)
-            if cur_node == goal:
+            if cur_node[0] == goal[0] and cur_node[1] == goal[1]:
                 queue = []
+                returnGoal=cur_node
                 break
 
             next_nodes = self.graph[cur_node]
@@ -234,8 +196,8 @@ class Graph:
                     heappush(queue, (new_cost, neigh_node))
                     cost_visited[neigh_node] = new_cost
                     visited[neigh_node] = cur_node
-        # print(visited)
-        return visited
+        # print(visited, returnGoal)
+        return visited, returnGoal
 
 
 class Tractor:
@@ -292,20 +254,22 @@ def get_next_nodes(x, y, direction: Direction, grid: Grid):
     return next_nodes
 
 
-def movement(traktor: Tractor, grid: Grid, road):
+def movement(tractor: Tractor, grid: Grid, road):
     n = len(road)
     for i in range(n - 1):
         aA = road[i]
         bB = road[i + 1]
         if aA[0] != bB[0]:
-            traktor.move(grid=grid)
+            tractor.move(grid=grid)
         if aA[1] != bB[1]:
-            traktor.move(grid=grid)
+            tractor.move(grid=grid)
         if aA[2] != bB[2]:
             if (bB[2].value - aA[2].value == 1) or (bB[2].value - aA[2].value == -3):
-                traktor.rot_center(Direction.RIGHT)
+                tractor.rot_center(Direction.RIGHT)
             else:
-                traktor.rot_center(Direction.LEFT)
+                tractor.rot_center(Direction.LEFT)
+        updateDisplay(tractor, grid)
+        time.sleep(0.3)
 
 
 def getRoad(start, goal, visited):
@@ -316,26 +280,43 @@ def getRoad(start, goal, visited):
         aFrom = visited[aFrom]
     arr.append(start)
     brr = arr[::-1]
-    try:
-        if brr[-2][0] == brr[-1][0] and brr[-2][1] == brr[-1][1]:
-            if brr[-3][0] == brr[-1][0] and brr[-3][1] == brr[-1][1]:
-                crr = brr[:-2]
-            else:
-                crr = brr[:-1]
-        else:
-            crr = brr
-    except:
-        print("You already at this title")
-        crr = brr
-    return crr
+    print(brr)
+    return brr
 
-# grid = Grid(BOARD_SIZE, BOARD_SIZE, BLOCK_SIZE)
-# graph1 = Graph(grid)
-# graph1.initialize_graph(grid)
-#
-# startpoint = (1, 1)
-# endpoint = (2,2)
-#
-# a = graph1.dijkstra(startpoint, endpoint)
-# b = getRoad(startpoint, endpoint, a)
-# print(b)
+
+def updateDisplay(tractor: Tractor, grid: Grid):
+    for y, row in enumerate(grid.grid):
+        for x, col in enumerate(row):
+            if grid.grid[x][y] == vegetables.POTATO:
+                sc.blit(potato_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
+            elif grid.grid[x][y] == vegetables.CARROT:
+                sc.blit(carrot_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
+            elif grid.grid[x][y] == vegetables.BROCCOLI:
+                sc.blit(broccoli_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
+            elif grid.grid[x][y] == vegetables.ONION:
+                sc.blit(onion_image, (x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5))
+            elif grid.grid[x][y] == types.ROCK:
+                sc.blit(rock_image, (x * BLOCK_SIZE, y * BLOCK_SIZE))
+    sc.blit(gas_station_image, (SPAWN_POINT[0] * BLOCK_SIZE, SPAWN_POINT[1] * BLOCK_SIZE))
+
+    # region text
+    vegetables_text = font.render(
+        'Potato: ' + str(tractor.collected_vegetables[vegetables.POTATO]) + ' Broccoli: ' + str(
+            tractor.collected_vegetables[vegetables.BROCCOLI]) + ' Carrot: ' + str(
+            tractor.collected_vegetables[vegetables.CARROT]) + ' Onion: ' + str(
+            tractor.collected_vegetables[vegetables.ONION]), True, WHITE, BLACK)
+    vegetables_textrect = vegetables_text.get_rect()
+    vegetables_textrect.center = (WINDOW_DIMENSIONS // 2, WINDOW_DIMENSIONS - 30)
+    sc.blit(vegetables_text, vegetables_textrect)
+
+    gas_text = font.render('Gas tank: ' + str(tractor.gas), True, WHITE, BLACK)
+    gas_textrect = gas_text.get_rect()
+    gas_textrect.center = (WINDOW_DIMENSIONS // 4 * 3, 20)
+    sc.blit(gas_text, gas_textrect)
+    # endregion
+
+    sc.blit(tractor.image, (tractor.x * BLOCK_SIZE + 5, tractor.y * BLOCK_SIZE + 5))
+    pygame.display.update()
+
+    pygame.time.Clock().tick(60)
+
