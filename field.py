@@ -214,6 +214,7 @@ class Tractor:
     def rot_center(self, direc: Direction):
         self.image = pygame.transform.rotate(self.image, - int(direc) * 90)
         self.direction = Direction(((int(self.direction) + int(direc)) % 4))
+        self.gas -= 1
         # print(self.direction)
         return
 
@@ -250,7 +251,13 @@ def get_next_nodes(x, y, direction: Direction, grid: Grid):
                 next_nodes.append((1, (x, y, new_direction)))
         else:
             if check_next_node(x + way[0], y + way[1]):
-                next_nodes.append((grid.grid[x + way[0]][y + way[1]].value, (x + way[0], y + way[1], new_direction)))
+                if grid.grid[x + way[0]][y + way[1]] == types.ROCK:
+                    # print(x, y, "to", x + way[0], y + way[1], 'costs 5')
+                    next_nodes.append((5, (x + way[0], y + way[1], new_direction)))
+                else:
+                    next_nodes.append((1, (x + way[0], y + way[1], new_direction)))
+
+    # print(x,y, direction, next_nodes, '\n')
     return next_nodes
 
 
@@ -280,7 +287,7 @@ def getRoad(start, goal, visited):
         aFrom = visited[aFrom]
     arr.append(start)
     brr = arr[::-1]
-    print(brr)
+    # print(brr)
     return brr
 
 
