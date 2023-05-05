@@ -83,9 +83,9 @@ def draw_interface():
                 elif event.key == pygame.K_RETURN:
                     for y, row in enumerate(grid.grid):
                         for x, col in enumerate(row):
-                            if col in [item.value for item in vegetables] and (x, y) == (tractor.x, tractor.y):
-                                tractor.collected_vegetables[vegetables(col)] += 1
-                                grid.remove_object(x, y)
+                            if grid.grid[tractor.x][tractor.y] in vegetables:
+                                tractor.collected_vegetables[grid.grid[tractor.x][tractor.y]] += 1
+                                grid.remove_object(tractor.x, tractor.y)
                                 break
                     if (tractor.x, tractor.y) == SPAWN_POINT:
                         tractor.water = WATER_TANK_CAPACITY
@@ -241,9 +241,7 @@ class Tractor:
 
 def get_next_nodes(x, y, direction: Direction, grid: Grid):
     check_next_node = lambda x, y: True if 0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE else False
-    way = [0, -1] if direction == Direction.UP else [1, 0] if direction == Direction.RIGHT else [0,
-                                                                                                 1] if direction == Direction.DOWN else [
-        -1, 0]
+    way = [0, -1] if direction == Direction.UP else [1, 0] if direction == Direction.RIGHT else [0, 1] if direction == Direction.DOWN else [-1, 0]
     next_nodes = []
     for new_direction in Direction:
         if new_direction != direction:
