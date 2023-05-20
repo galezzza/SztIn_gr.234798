@@ -20,6 +20,9 @@ BOARD_SIZE = int(WINDOW_DIMENSIONS / BLOCK_SIZE)
 WATER_TANK_CAPACITY = 10
 GAS_TANK_CAPACITY = 250
 SPAWN_POINT = (0, 0)
+SKLEP_POINT = (14, 14)
+
+
 
 tractor_image = pygame.transform.scale(pygame.image.load("images/tractor_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
 rock_image = pygame.transform.scale(pygame.image.load("images/rock_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
@@ -28,6 +31,7 @@ carrot_image = pygame.transform.scale(pygame.image.load("images/carrot.png"), (B
 broccoli_image = pygame.transform.scale(pygame.image.load("images/broccoli.png"), (BLOCK_SIZE, BLOCK_SIZE))
 onion_image = pygame.transform.scale(pygame.image.load("images/onion.png"), (BLOCK_SIZE, BLOCK_SIZE))
 gas_station_image = pygame.transform.scale(pygame.image.load("images/gas_station.png"), (BLOCK_SIZE, BLOCK_SIZE))
+sklep_station_image = pygame.transform.scale(pygame.image.load("images/storage.png"), (BLOCK_SIZE, BLOCK_SIZE))
 font = pygame.font.Font('freesansbold.ttf', BLOCK_SIZE // 2)
 
 
@@ -50,7 +54,25 @@ def get_click_mouse_pos():
     return (grid_x, grid_y, Direction.RIGHT) if click[0] else False
 
 
+
 def draw_interface():
+    def returnFun():
+        for y, row in enumerate(grid.grid):
+            for x, col in enumerate(row):
+                if grid.grid[tractor.x][tractor.y] in vegetables:
+                    if tractor.collected_vegetables[grid.grid[tractor.x][tractor.y]] < 5:
+                        tractor.collected_vegetables[grid.grid[tractor.x][tractor.y]] += 1
+                        grid.remove_object(tractor.x, tractor.y)
+                    else:
+                        print("tractor storage is full")
+                        return
+        if (tractor.x, tractor.y) == SPAWN_POINT:
+            tractor.water = WATER_TANK_CAPACITY
+            tractor.gas = GAS_TANK_CAPACITY
+        if (tractor.x, tractor.y) == SKLEP_POINT:
+            tractor.collected_vegetables = {vegetables.POTATO: 0, vegetables.BROCCOLI: 0, vegetables.CARROT: 0,
+                                                vegetables.ONION: 0}
+
     global sc
     sc = pygame.display.set_mode((WINDOW_DIMENSIONS, WINDOW_DIMENSIONS))
     pygame.display.set_caption("Pole i ciągnik")
@@ -64,6 +86,7 @@ def draw_interface():
     grid = Grid(BOARD_SIZE, BOARD_SIZE, BLOCK_SIZE)
     graph1 = Graph(grid)
     graph1.initialize_graph(grid)
+
 
     fl_running = True
     while fl_running:
@@ -81,15 +104,7 @@ def draw_interface():
                 elif event.key == pygame.K_UP:
                     tractor.move(grid=grid)
                 elif event.key == pygame.K_RETURN:
-                    for y, row in enumerate(grid.grid):
-                        for x, col in enumerate(row):
-                            if grid.grid[tractor.x][tractor.y] in vegetables:
-                                tractor.collected_vegetables[grid.grid[tractor.x][tractor.y]] += 1
-                                grid.remove_object(tractor.x, tractor.y)
-                                break
-                    if (tractor.x, tractor.y) == SPAWN_POINT:
-                        tractor.water = WATER_TANK_CAPACITY
-                        tractor.gas = GAS_TANK_CAPACITY
+                    returnFun()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 startpoint = (tractor.x, tractor.y, tractor.direction)
                 endpoint = get_click_mouse_pos()
@@ -274,7 +289,6 @@ def movement(tractor: Tractor, grid: Grid, road):
             else:
                 tractor.rot_center(Direction.LEFT)
         updateDisplay(tractor, grid)
-        time.sleep(0.3)
 
 
 def getRoad(start, goal, visited):
@@ -303,6 +317,7 @@ def updateDisplay(tractor: Tractor, grid: Grid):
             elif grid.grid[x][y] == types.ROCK:
                 sc.blit(rock_image, (x * BLOCK_SIZE, y * BLOCK_SIZE))
     sc.blit(gas_station_image, (SPAWN_POINT[0] * BLOCK_SIZE, SPAWN_POINT[1] * BLOCK_SIZE))
+    sc.blit(sklep_station_image, (SKLEP_POINT[0] * BLOCK_SIZE, SKLEP_POINT[1] * BLOCK_SIZE))
 
     # region text
     vegetables_text = font.render(
@@ -316,7 +331,7 @@ def updateDisplay(tractor: Tractor, grid: Grid):
 
     gas_text = font.render('Gas tank: ' + str(tractor.gas), True, WHITE, BLACK)
     gas_textrect = gas_text.get_rect()
-    gas_textrect.center = (WINDOW_DIMENSIONS // 4 * 3, 20)
+    gas_textrect.center = (WINDOW_DIMENSIONS // 4 * 3.5, 20)
     sc.blit(gas_text, gas_textrect)
     # endregion
 
