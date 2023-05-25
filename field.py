@@ -86,7 +86,7 @@ def draw_interface():
 
     grid = Grid(BOARD_SIZE, BOARD_SIZE, BLOCK_SIZE)
     graph1 = Graph(grid)
-    graph1.initialize_graph(grid)
+    #graph1.initialize_graph(grid)
 
 
     fl_running = True
@@ -179,15 +179,15 @@ class Grid:
 class Graph:
     def __init__(self, grid: Grid):
         self.graph = {}
-        self.initialize_graph(grid)
+        # self.initialize_graph(grid)
 
-    def initialize_graph(self, grid: Grid):
-        for y, row in enumerate(grid.grid):
-            for x, col in enumerate(row):
-                for direction in Direction:
-                    self.graph[(x, y, direction)] = get_next_nodes(x, y, direction, grid)
+    # def initialize_graph(self, grid: Grid):
+    #     for y, row in enumerate(grid.grid):
+    #         for x, col in enumerate(row):
+    #             for direction in Direction:
+    #                 self.graph[(x, y, direction)] = get_next_nodes(x, y, direction, grid)
 
-    def a_star(self, start, goal):
+    def a_star(self, start, goal, grid: Grid):
         # not finished yet https://www.youtube.com/watch?v=abHftC1GU6w
         queue = PriorityQueue()
         queue.put((0, start))
@@ -203,7 +203,7 @@ class Graph:
                 returnGoal=cur_node
                 break
 
-            next_nodes = self.graph[cur_node]
+            next_nodes = get_next_nodes(cur_node[0], cur_node[1], cur_node[2], grid)
             for next_node in next_nodes:
                 neigh_cost, neigh_node = next_node
 
@@ -384,23 +384,23 @@ def decisionTree(startpoint, endpoint, tractor, grid, graph1):
     arr.append(eight)
 
 
-    a1, c1 = graph1.a_star(startpoint, endpoint)
+    a1, c1 = graph1.a_star(startpoint, endpoint, grid)
     b1 = getRoad(startpoint, c1, a1)
     cost1 = getCost(tractor, grid, b1)
 
-    a2, c2 = graph1.a_star(startpoint, (SPAWN_POINT[0], SPAWN_POINT[1], Direction.RIGHT))
+    a2, c2 = graph1.a_star(startpoint, (SPAWN_POINT[0], SPAWN_POINT[1], Direction.RIGHT), grid)
     b2 = getRoad(startpoint, c2, a2)
     cost2 = getCost(tractor, grid, b2)
 
-    a3, c3 = graph1.a_star(startpoint, (SKLEP_POINT[0], SKLEP_POINT[1], Direction.RIGHT))
+    a3, c3 = graph1.a_star(startpoint, (SKLEP_POINT[0], SKLEP_POINT[1], Direction.RIGHT), grid)
     b3 = getRoad(startpoint, c3, a3)
     cost3 = getCost(tractor, grid, b3)
 
-    a4, c4 = graph1.a_star(c1, (SPAWN_POINT[0], SPAWN_POINT[1], Direction.RIGHT))
+    a4, c4 = graph1.a_star(c1, (SPAWN_POINT[0], SPAWN_POINT[1], Direction.RIGHT), grid)
     b4 = getRoad(c1, c4, a4)
     cost4 = getCost(tractor, grid, b4)
 
-    a5, c5 = graph1.a_star(c3, (SPAWN_POINT[0], SPAWN_POINT[1], Direction.RIGHT))
+    a5, c5 = graph1.a_star(c3, (SPAWN_POINT[0], SPAWN_POINT[1], Direction.RIGHT), grid)
     b5 = getRoad(c3, c5, a5)
     cost5 = getCost(tractor, grid, b5)
 
