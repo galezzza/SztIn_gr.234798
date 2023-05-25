@@ -117,16 +117,21 @@ def predict(tree, instance):
     else:
         root_node = next(iter(tree))
         feature_value = instance[root_node]
+        print(root_node)
+        print(feature_value)
         if feature_value in tree[root_node]:
             return predict(tree[root_node][feature_value], instance)
         else:
             return None
 
+
 def evaluate(tree, test_data_m, label):
     correct_preditct = 0
     wrong_preditct = 0
     for index, row in test_data_m.iterrows():
+        print(test_data_m.iloc[index])
         result = predict(tree, test_data_m.iloc[index])
+        print()
         if result == test_data_m[label].iloc[index]:
             correct_preditct += 1
         else:
@@ -147,8 +152,10 @@ class NpEncoder(json.JSONEncoder):
 
 tree = id3(train_data_m, 'go to: 1)next veget. 2)gas station 3)warehouse 4)sleep 5)GAME OVER')
 # print(tree)
-json_str = json.dumps(tree, indent=2, cls=NpEncoder)
-print(json_str)
+# json_str = json.dumps(tree, indent=2, cls=NpEncoder)
+# print(json_str)
 
-accuracy = evaluate(tree, test_data_m, 'go to: 1)next veget. 2)gas station 3)warehouse 4)sleep 5)GAME OVER') #evaluating the test dataset
-print(accuracy)
+accuracy = evaluate(tree, test_data_m, 'go to: 1)next veget. 2)gas station 3)warehouse 4)sleep 5)GAME OVER')
+# print(accuracy)
+
+
