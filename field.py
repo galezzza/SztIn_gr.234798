@@ -1,9 +1,12 @@
+import asyncio
 import random
 import time
 from heapq import *
 from enum import Enum, IntEnum
 from queue import PriorityQueue
 from collections import deque
+from threading import Thread
+
 from IC3 import tree
 
 import pygame
@@ -22,8 +25,7 @@ WATER_TANK_CAPACITY = 10
 GAS_TANK_CAPACITY = 250
 SPAWN_POINT = (0, 0)
 SKLEP_POINT = (14, 14)
-
-
+TIMEOUT = 1
 
 tractor_image = pygame.transform.scale(pygame.image.load("images/tractor_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
 rock_image = pygame.transform.scale(pygame.image.load("images/rock_image.png"), (BLOCK_SIZE, BLOCK_SIZE))
@@ -32,7 +34,10 @@ carrot_image = pygame.transform.scale(pygame.image.load("images/carrot.png"), (B
 broccoli_image = pygame.transform.scale(pygame.image.load("images/broccoli.png"), (BLOCK_SIZE, BLOCK_SIZE))
 onion_image = pygame.transform.scale(pygame.image.load("images/onion.png"), (BLOCK_SIZE, BLOCK_SIZE))
 gas_station_image = pygame.transform.scale(pygame.image.load("images/gas_station.png"), (BLOCK_SIZE, BLOCK_SIZE))
-sklep_station_image = pygame.transform.scale(pygame.image.load("images/storage.png"), (BLOCK_SIZE, BLOCK_SIZE))
+gas_station_closed_image = pygame.transform.scale(pygame.image.load("images/gas_station_closed.png"), (BLOCK_SIZE, BLOCK_SIZE))
+sklep_station_image = pygame.transform.scale(pygame.image.load("images/storage_open.png"), (BLOCK_SIZE, BLOCK_SIZE))
+sklep_closed_station_image = pygame.transform.scale(pygame.image.load("images/storage_closed.png"),
+                                                    (BLOCK_SIZE, BLOCK_SIZE))
 font = pygame.font.Font('freesansbold.ttf', BLOCK_SIZE // 2)
 
 
@@ -55,7 +60,6 @@ def get_click_mouse_pos():
     return (grid_x, grid_y, Direction.RIGHT) if click[0] else False
 
 
-
 def draw_interface():
     def returnFun():
         for y, row in enumerate(grid.grid):
@@ -72,7 +76,7 @@ def draw_interface():
             tractor.gas = GAS_TANK_CAPACITY
         if (tractor.x, tractor.y) == SKLEP_POINT:
             tractor.collected_vegetables = {vegetables.POTATO: 0, vegetables.BROCCOLI: 0, vegetables.CARROT: 0,
-                                                vegetables.ONION: 0}
+                                            vegetables.ONION: 0}
 
     global sc
     sc = pygame.display.set_mode((WINDOW_DIMENSIONS, WINDOW_DIMENSIONS))
@@ -86,9 +90,9 @@ def draw_interface():
 
     grid = Grid(BOARD_SIZE, BOARD_SIZE, BLOCK_SIZE)
     graph1 = Graph(grid)
-    #graph1.initialize_graph(grid)
-
-
+    t2 = Thread(target=close_open, args=(grid,))
+    t2.setDaemon(True)
+    t2.start()
     fl_running = True
     while fl_running:
         draw_grid()
@@ -114,6 +118,11 @@ def draw_interface():
                 # b = getRoad(startpoint, c, a)
                 # movement(tractor, grid, b)
         updateDisplay(tractor, grid)
+
+    # graph1.initialize_graph(grid)
+
+
+
 
 
 class Direction(IntEnum):
@@ -146,6 +155,8 @@ class Grid:
         self.block_size = block_size
         self.grid = [[types.EMPTY for col in range(BOARD_SIZE)] for row in range(BOARD_SIZE)]
         self.initialize_grid()
+        self.is_gas_station_closed = False
+        self.is_storage_closed = False
 
     def add_object(self, x, y, type_of_object: types):
         if self.grid[x][y] == types.EMPTY:
@@ -195,12 +206,13 @@ class Graph:
         visited = {start: None}
 
         returnGoal = goal
-        h = lambda start, goal: abs(start[0] - goal[0]) + abs(start[1] - goal[1]) #heuristic function (manhattan distance)
+        h = lambda start, goal: abs(start[0] - goal[0]) + abs(
+            start[1] - goal[1])  # heuristic function (manhattan distance)
 
         while not queue.empty():
             cur_cost, cur_node = queue.get()
             if cur_node[0] == goal[0] and cur_node[1] == goal[1]:
-                returnGoal=cur_node
+                returnGoal = cur_node
                 break
 
             next_nodes = get_next_nodes(cur_node[0], cur_node[1], cur_node[2], grid)
@@ -258,7 +270,9 @@ class Tractor:
 
 def get_next_nodes(x, y, direction: Direction, grid: Grid):
     check_next_node = lambda x, y: True if 0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE else False
-    way = [0, -1] if direction == Direction.UP else [1, 0] if direction == Direction.RIGHT else [0, 1] if direction == Direction.DOWN else [-1, 0]
+    way = [0, -1] if direction == Direction.UP else [1, 0] if direction == Direction.RIGHT else [0,
+                                                                                                 1] if direction == Direction.DOWN else [
+        -1, 0]
     next_nodes = []
     for new_direction in Direction:
         if new_direction != direction:
@@ -291,6 +305,8 @@ def movement(tractor: Tractor, grid: Grid, road):
             else:
                 tractor.rot_center(Direction.LEFT)
         updateDisplay(tractor, grid)
+
+
 def getCost(tractor: Tractor, grid: Grid, road):
     n = len(road)
     cost = 0
@@ -309,10 +325,11 @@ def getCost(tractor: Tractor, grid: Grid, road):
                 cost += 2
         if aA[2] != bB[2]:
             if (bB[2].value - aA[2].value == 1) or (bB[2].value - aA[2].value == -3):
-                cost +=1
+                cost += 1
             else:
-                cost +=1
+                cost += 1
     return cost
+
 
 def getRoad(start, goal, visited):
     arr = []
@@ -340,7 +357,14 @@ def updateDisplay(tractor: Tractor, grid: Grid):
             elif grid.grid[x][y] == types.ROCK:
                 sc.blit(rock_image, (x * BLOCK_SIZE, y * BLOCK_SIZE))
     sc.blit(gas_station_image, (SPAWN_POINT[0] * BLOCK_SIZE, SPAWN_POINT[1] * BLOCK_SIZE))
-    sc.blit(sklep_station_image, (SKLEP_POINT[0] * BLOCK_SIZE, SKLEP_POINT[1] * BLOCK_SIZE))
+    if grid.is_storage_closed:
+        sc.blit(sklep_closed_station_image, (SKLEP_POINT[0] * BLOCK_SIZE, SKLEP_POINT[1] * BLOCK_SIZE))
+    else:
+        sc.blit(sklep_station_image, (SKLEP_POINT[0] * BLOCK_SIZE, SKLEP_POINT[1] * BLOCK_SIZE))
+    if grid.is_gas_station_closed:
+        sc.blit(gas_station_closed_image, (SPAWN_POINT[0] * BLOCK_SIZE, SPAWN_POINT[1] * BLOCK_SIZE))
+    else:
+        sc.blit(gas_station_image, (SPAWN_POINT[0] * BLOCK_SIZE, SPAWN_POINT[1] * BLOCK_SIZE))
 
     # region text
     vegetables_text = font.render(
@@ -363,16 +387,16 @@ def updateDisplay(tractor: Tractor, grid: Grid):
 
     pygame.time.Clock().tick(60)
 
-def decisionTree(startpoint, endpoint, tractor, grid, graph1):
 
-    one="can it get to the next point"
-    two="will it be able to get to the gas station"
-    three="will it be able to get to the gas station after arriving at the next point"
-    four="will it be able to take the next vegetable to the tractor storage"
-    five="will it be able to get to the vegetable warehouse"
-    six="will it be able to get to the gas station after it arrives at the vegetable warehouse"
-    seven="is the vegetable warehouse closed"
-    eight="is the gas station closed"
+def decisionTree(startpoint, endpoint, tractor, grid, graph1):
+    one = "can it get to the next point"
+    two = "will it be able to get to the gas station"
+    three = "will it be able to get to the gas station after arriving at the next point"
+    four = "will it be able to take the next vegetable to the tractor storage"
+    five = "will it be able to get to the vegetable warehouse"
+    six = "will it be able to get to the gas station after it arrives at the vegetable warehouse"
+    seven = "is the vegetable warehouse closed"
+    eight = "is the gas station closed"
     arr = []
     arr.append(one)
     arr.append(two)
@@ -382,7 +406,6 @@ def decisionTree(startpoint, endpoint, tractor, grid, graph1):
     arr.append(six)
     arr.append(seven)
     arr.append(eight)
-
 
     a1, c1 = graph1.a_star(startpoint, endpoint, grid)
     b1 = getRoad(startpoint, c1, a1)
@@ -403,7 +426,6 @@ def decisionTree(startpoint, endpoint, tractor, grid, graph1):
     a5, c5 = graph1.a_star(c3, (SPAWN_POINT[0], SPAWN_POINT[1], Direction.RIGHT), grid)
     b5 = getRoad(c3, c5, a5)
     cost5 = getCost(tractor, grid, b5)
-
 
     if tractor.gas - cost1 > 0:
         can_it_get_to_the_next_point = 1
@@ -429,18 +451,17 @@ def decisionTree(startpoint, endpoint, tractor, grid, graph1):
         will_it_be_able_to_take_the_next_vegetable_to_the_tractor_storage = 1
 
     if tractor.gas - cost3 > 0:
-        will_it_be_able_to_get_to_the_vegetable_warehouse=1
+        will_it_be_able_to_get_to_the_vegetable_warehouse = 1
     else:
-        will_it_be_able_to_get_to_the_vegetable_warehouse=0
+        will_it_be_able_to_get_to_the_vegetable_warehouse = 0
 
     if tractor.gas - cost3 - cost5 > 0:
-        will_it_be_able_to_get_to_the_gas_station_after_it_arrives_at_the_vegetable_warehouse=1
+        will_it_be_able_to_get_to_the_gas_station_after_it_arrives_at_the_vegetable_warehouse = 1
     else:
         will_it_be_able_to_get_to_the_gas_station_after_it_arrives_at_the_vegetable_warehouse = 0
 
-    is_the_vegetable_warehouse_closed=0
-    is_the_gas_station_closed=0
-
+    is_the_vegetable_warehouse_closed = grid.is_storage_closed
+    is_the_gas_station_closed = grid.is_gas_station_closed
 
     brr = []
     brr.append(can_it_get_to_the_next_point)
@@ -462,16 +483,23 @@ def decisionTree(startpoint, endpoint, tractor, grid, graph1):
                 return predict(tree[root_node][feature_value])
             else:
                 return None
+
     decision = predict(tree)
     print(decision)
-    if decision==1:
+    if decision == 1:
         movement(tractor, grid, b1)
-    if decision==2:
+    if decision == 2:
         movement(tractor, grid, b2)
-    if decision==3:
+    if decision == 3:
         movement(tractor, grid, b3)
-    if decision==4:
+    if decision == 4:
         print("waiting")
-    if decision==5:
+    if decision == 5:
         print("GAME OVER")
 
+
+def close_open(grid: Grid):
+    while True:
+        time.sleep(TIMEOUT)
+        grid.is_gas_station_closed = bool(random.getrandbits(1))
+        grid.is_storage_closed = bool(random.getrandbits(1))
