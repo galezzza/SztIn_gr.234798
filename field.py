@@ -13,7 +13,7 @@ WHITE = (200, 200, 200)
 BLUE = (46, 34, 240)
 WINDOW_DIMENSIONS = 900
 BLOCK_SIZE = 60
-ROCKS_NUMBER = 20
+ROCKS_NUMBER = 30
 VEGETABLES_NUMBER = 20
 VEGETABLES = ('Potato', 'Broccoli', 'Carrot', 'Onion')
 BOARD_SIZE = int(WINDOW_DIMENSIONS / BLOCK_SIZE)
@@ -63,7 +63,7 @@ def draw_interface():
 
     grid = Grid(BOARD_SIZE, BOARD_SIZE, BLOCK_SIZE)
     graph1 = Graph(grid)
-    graph1.initialize_graph(grid)
+
 
     fl_running = True
     while fl_running:
@@ -93,7 +93,7 @@ def draw_interface():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 startpoint = (tractor.x, tractor.y, tractor.direction)
                 endpoint = get_click_mouse_pos()
-                a, c = graph1.a_star(startpoint, endpoint)
+                a, c = graph1.a_star(startpoint, endpoint, grid)
                 b = getRoad(startpoint, c, a)
                 movement(tractor, grid, b)
         updateDisplay(tractor, grid)
@@ -162,15 +162,8 @@ class Grid:
 class Graph:
     def __init__(self, grid: Grid):
         self.graph = {}
-        self.initialize_graph(grid)
 
-    def initialize_graph(self, grid: Grid):
-        for y, row in enumerate(grid.grid):
-            for x, col in enumerate(row):
-                for direction in Direction:
-                    self.graph[(x, y, direction)] = get_next_nodes(x, y, direction, grid)
-
-    def a_star(self, start, goal):
+    def a_star(self, start, goal, grid: Grid):
         # not finished yet https://www.youtube.com/watch?v=abHftC1GU6w
         queue = PriorityQueue()
         queue.put((0, start))
@@ -186,7 +179,7 @@ class Graph:
                 returnGoal=cur_node
                 break
 
-            next_nodes = self.graph[cur_node]
+            next_nodes = get_next_nodes(cur_node[0], cur_node[1], cur_node[2], grid)
             for next_node in next_nodes:
                 neigh_cost, neigh_node = next_node
 
