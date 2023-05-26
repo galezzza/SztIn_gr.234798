@@ -112,7 +112,7 @@ def draw_interface():
                 endpoint = get_click_mouse_pos()
                 a, c = graph1.a_star(startpoint, endpoint, grid)
                 b = getRoad(startpoint, c, a)
-                movement(tractor, grid, b)
+                #movement(tractor, grid, b)
                 decisionTree(startpoint, endpoint, tractor, grid, graph1)
                 # a, c = graph1.a_star(startpoint, endpoint)
                 # b = getRoad(startpoint, c, a)
@@ -157,9 +157,9 @@ class Grid:
         self.initialize_grid()
         self.is_gas_station_closed = True
         self.is_storage_closed = True
-        # t2 = Thread(target=close_open, args=(grid,))
-        # t2.setDaemon(True)
-        # t2.start()
+        t2 = Thread(target=self.close_open, args=(self,))
+        t2.setDaemon(True)
+        t2.start()
 
     def close_open(self):
         while True:
@@ -304,6 +304,7 @@ def get_next_nodes(x, y, direction: Direction, grid: Grid):
 
 
 def movement(tractor: Tractor, grid: Grid, road):
+    print(road)
     n = len(road)
     for i in range(n - 1):
         aA = road[i]

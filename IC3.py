@@ -117,8 +117,8 @@ def predict(tree, instance):
     else:
         root_node = next(iter(tree))
         feature_value = instance[root_node]
-        print(root_node)
-        print(feature_value)
+        # print(root_node)
+        # print(feature_value)
         if feature_value in tree[root_node]:
             return predict(tree[root_node][feature_value], instance)
         else:
@@ -129,9 +129,9 @@ def evaluate(tree, test_data_m, label):
     correct_preditct = 0
     wrong_preditct = 0
     for index, row in test_data_m.iterrows():
-        print(test_data_m.iloc[index])
+        # print(test_data_m.iloc[index])
         result = predict(tree, test_data_m.iloc[index])
-        print()
+        # print()
         if result == test_data_m[label].iloc[index]:
             correct_preditct += 1
         else:
